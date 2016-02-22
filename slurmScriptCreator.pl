@@ -361,6 +361,7 @@ for (my $i = 0; $i < $iter; $i ++) {
 	print $ofh '# number of tasks in $SLURM_NTASKS (default: 1)' . "\n";
 	print $ofh '# number of tasks per node in $SLURM_NTASKS_PER_NODE (default: 1)' . "\n";
 	print $ofh '# number of threads per task in $SLURM_CPUS_PER_TASK (default: 1)' . "\n";
+	print $ofh "sleep 2m\n";
 	print $ofh 'JAVABIN="' . "$javaDir/java" . ' -Xmx ' ."${heapMem}G" . "\"\n";
 	print $ofh '$JAVABIN ' . "$batchRunnerDir" . '/modulebatchrunner.jar -c ';
 	print $ofh "$expOut >$expOut.log 2>$expOut.err\n";
