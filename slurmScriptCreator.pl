@@ -314,6 +314,10 @@ for (my $i = 0; $i < $iter; $i ++) {
 
 ####################
 # Create new template scripts.
+
+#Array ref on @line for usage in fuctions.
+my $lineRef = \@line;
+
 for (my $i = 0; $i < $iter; $i ++) {
 
 	# Create a file for each script.
@@ -321,7 +325,7 @@ for (my $i = 0; $i < $iter; $i ++) {
 	open my $efh, ">", $expOut or die "Error $expOut: $!\n";
 
 	for (my $currLineNum = 1; $currLineNum < ($totalLines + 1); $currLineNum ++) {
-		if (&containsEl(@line, $currLineNum)) {
+		if (&containsEl($lineRef, $currLineNum)) {
 			print $efh "$exchLines{$currLineNum}->[$i]\n";
 		} else {
 			print $efh "$templateLines{$currLineNum}\n";
@@ -370,10 +374,10 @@ for (my $i = 0; $i < $iter; $i ++) {
 ####################
 # Test whether an array contains a specific element.
 sub containsEl {
-	my @myArray = shift @_;
+	my $myArray = shift @_;
 	my $myElement = shift @_;
 	my $myReturn = 0;
-	foreach (@myArray) {
+	foreach (@{ $myArray }) {
 		if ($_ eq $myElement) {
 			$myReturn = $myElement;
 		}
