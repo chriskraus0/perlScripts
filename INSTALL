@@ -1,0 +1,9 @@
+################################################################################
+#INSTALL
+################################################################################
+
+Just clone this repository.
+
+Type the following to create a usable version of "slurmScriptCreator.pl":
+chmod u+x slurmScriptCreator.pl
+READY.
