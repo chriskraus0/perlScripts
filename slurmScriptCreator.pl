@@ -249,8 +249,8 @@ my %exchLines;
 		}
 	}
 	# Remember the specific lines to be exchanged. 
-	# ATTENTION: additional "-2" due to post-fence error and additional adding at the end of file!
-	$totalLines = $currLineNum - 2;
+	# ATTENTION: additional "-1" due to post-fence error!
+	$totalLines = $currLineNum - 1;
 }
 
 close $fh;
