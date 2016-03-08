@@ -53,7 +53,7 @@ my $helpMsg = "NAME\n\n"
 		. "\t\t\t If any of these fields are missing or can not be found in the gff3\n"
 		. "\t\t\t this will throw an error and the programme will terminate.\n\n"
 
-		. "\t--fasta=\'<FILE,FILE,FILE...>\'\t a single fasta file or a list\n"
+		. "\t--fasta=\'<FILE,FILE,FILE,...>\'\t a single fasta file or a list\n"
 		. "\t\t\t of fasta files providing the genomic information. For a single\n"
 		. "\t\t\t file the name can be arbritary for a list of files each file\n"
 		. "\t\t\t must comply the pattern \"chr1.fasta\", \"chr2.fasta\" etc.\n"
@@ -105,7 +105,55 @@ for (@parsedArgs) {
 	$missedArg = &argumentError("$_") unless ($_);
 }
 
-die "Necessary Arguments not provided\n\n$usageMsg\n" if ($missedArg);
+die "Error: Necessary arguments not provided\n\n$usageMsg\n" if ($missedArg);
+
+####################
+# Catch error in fasta file list.
+die ("Error in --regex option.\n"
+. "--fasta must be the pattern \'FILE,FILE,...\' or \'FILE\'\n"
+. "$usageMsg")
+unless ($regexCh =~ m/(\S+\,)+/ || $regexCh =~ m/(\S+)/);
+
+###################
+# Store the different regex to be exchanged.
+my @fastaFileList;
+
+if ($fasta =~ m/\,/) {
+	@fastaFileList = split /\,/, $fasta;
+} else {
+	my $fastaFile = $fasta;
+	push @fastaFileList, $fastaFile;
+}
+
+####################
+# Save chromosome sequences with coordiantes.
+
+# Save the chromosome sequences and cooridinates in this hash table.
+my %chrSeq; 
+
+{
+	# Remember the last Fasta header.
+	my $lastHeader;
+
+	foreach my $fastaFile (@fastaFileList) {
+		open my $fh, "<", $fastaFile or die "Error $fastaFile: $!\n";
+		while (<$fh>) {
+			chomp;
+			if (/\A>/) {
+				$chrSeq{$_}="";
+				$lastHeader = $_;
+			} elsif (/\A\S/) {
+				# Save the sequence in an anonymous array as value to the header (key).
+				if ($chrSeq{$lastHeader}) {
+					push @{ $chrSeq{$lastHeader} }, ($_);
+				} else {
+					$chrSeq{$lastHeader} = [ ($_) ];
+				}
+			}
+		}
+
+	}
+}
 
 ########################################
 # Subroutines:
@@ -117,3 +165,9 @@ sub argumentError {
     	die "Error \"--$missingArg\": Argument not initialised.\n";
 	return 1;
 }
+
+########################################
+# Classes:
+
+####################
+# chrSeqCor Class. Instantiated objects remember sequences, cooordinates and header information.
