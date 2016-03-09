@@ -115,7 +115,7 @@ die ("Error in --regex option.\n"
 unless ($fasta =~ m/(\S+\,)+/ || $fasta =~ m/(\S+)/);
 
 ###################
-# Store the different regex to be exchanged.
+# Store information from Fasta files.
 my @fastaFileList;
 
 if ($fasta =~ m/\,/) {
@@ -176,8 +176,78 @@ my %chrSeq;
 #$res = $chrSeq{$ele[0]}->getSpecCoor(4,10);
 #print "\nseq at coordinate 4 to 10:\n$res\n";
 
+
 ####################
-#
+# Save gff3 coordinates.
+#EnsemblGeneID\tChromsomeNumber\tStartPos\tStopPos
+my %gff3Coor;
+
+open my $fh, "<", $targetList;
+
+while (<$fh>) {
+	chomp;
+	unless (/\A#/) {
+		my @line = split /\t/;
+		$gff3Coor{$line[0]} = [ ($line[1], $line[0], $line[2], $line[3]) ];
+	}
+}
+
+close $fh;
+
+
+
+####################
+# Query the gff3 file.
+
+open my $fh, "<", $gff3;
+
+{
+	my $readStatus = "";
+	my $lastGene = "";
+	while (<$fh>) {
+		chomp;
+		unless (/\A##/ || /\A#!/) {
+			my @line = split /\t/;
+			my @annotation = split /;/, $line[8];
+			$annotation[0] =~ s/\AID=gene://;
+			foreach my $gene (sort keys %gff3Coor) {
+				if ($line[0] == $gff3Coor{$gene}->[0] 
+						&& $line[2] eq "gene" 
+						&& $line[3] == $gff3Coor{$gene}->[2]
+						&& $line[4] == $gff3Coor{$gene}->[3]
+						&& $annotation[0] == $gene
+				   ) {
+					# Start reading gene information.
+					$readStatus = "start";
+					$lastGene = $gene;
+				}
+				
+			}
+
+		}
+		if ($readStatus && $lastGene) {
+			# Read each line and remember interesting annotations.
+			my @line = split /\t/;
+			if ($line[2] eq "exon" || $line[2] eq "five_prime_UTR" ||$line[2] eq "three_prime_UTR") {
+				if ($gff3Coor{$lastGene}->[4]) {
+					push @{ $gff3Coor{$lastGene}->[4] }, [ ($line[2], $line[3], $line[4] ) ];
+				} else {
+					$gff3Coor{$lastGene}->[4] = [ ($line[2], $line[3], $line[4] ) ];
+				}
+			}
+		}
+		if (/\A###/) {
+			# End of gene sequence.
+			$readStatus = "";
+			$lastGene = "";
+		}
+	}
+	close $fh;
+}
+
+####################
+# Extract all interesting genes and categories form the fasta files.
+# TODO Continue here.
 
 ########################################
 # Subroutines:
