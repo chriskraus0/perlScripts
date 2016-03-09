@@ -11,7 +11,7 @@ use utf8;
 use 5.010;
 use strict;
 use warnings;
-use Getopt:Long; #command line option module
+use Getopt::Long; #command line option module
 use Cwd;	#module to provide information about current directory
 
 ####################
@@ -96,13 +96,13 @@ GetOptions ("gff3=s" => \$gff3,
 	"downstream=i" => \$downstream)
 or die("Error in command line arguments.\n" . "$usageMsg");
 
-my @parsedArgs = ($gff3, $targetList, $fasta, $upstream, $downstream);
+my %parsedArgs = (gff3 => \$gff3, targetList => \$targetList, fasta => \$fasta, upstream => \$upstream, downstream => \$downstream);
 
 ####################
 #Catch argument errors.
 my $missedArg = 0;
-for (@parsedArgs) {
-	$missedArg = &argumentError("$_") unless ($_);
+foreach my $arg (sort keys %parsedArgs) {
+	$missedArg = &argumentError($arg) unless (${$parsedArgs{$arg}});
 }
 
 die "Error: Necessary arguments not provided\n\n$usageMsg\n" if ($missedArg);
@@ -112,7 +112,7 @@ die "Error: Necessary arguments not provided\n\n$usageMsg\n" if ($missedArg);
 die ("Error in --regex option.\n"
 . "--fasta must be the pattern \'FILE,FILE,...\' or \'FILE\'\n"
 . "$usageMsg")
-unless ($regexCh =~ m/(\S+\,)+/ || $regexCh =~ m/(\S+)/);
+unless ($fasta =~ m/(\S+\,)+/ || $fasta =~ m/(\S+)/);
 
 ###################
 # Store the different regex to be exchanged.
@@ -133,27 +133,51 @@ my %chrSeq;
 
 {
 	# Remember the last Fasta header.
-	my $lastHeader;
+	my $lastHeader = "";
 
 	foreach my $fastaFile (@fastaFileList) {
 		open my $fh, "<", $fastaFile or die "Error $fastaFile: $!\n";
 		while (<$fh>) {
 			chomp;
 			if (/\A>/) {
-				$chrSeq{$_}="";
+				if ($lastHeader) {
+					# If the last sequence of this fasta entry was reached remove the additional coordinate.
+					$chrSeq{$lastHeader}->stopCoor;
+				}
+				$chrSeq{$_}= ChrSeqCor->new($_);
 				$lastHeader = $_;
 			} elsif (/\A\S/) {
-				# Save the sequence in an anonymous array as value to the header (key).
-				if ($chrSeq{$lastHeader}) {
-					push @{ $chrSeq{$lastHeader} }, ($_);
-				} else {
-					$chrSeq{$lastHeader} = [ ($_) ];
-				}
+				# Save the sequence and coordinates in ChrSeqCor object.
+				my $seqLen = length $_;
+				$chrSeq{$lastHeader}->setCoor($seqLen,$_);
 			}
 		}
-
+		# If the last sequence of this fasta entry was reached remove the additional coordinate.
+		$chrSeq{$lastHeader}->stopCoor;
+		$lastHeader = "";
+		close $fh;
 	}
 }
+
+####################
+# Test code for the fasta sequence assessment:
+#foreach (sort keys %chrSeq) {
+#	print "header:\n$_\n\n";
+#	my $newCoorRef = \$chrSeq{$_}->getCoor;
+#	foreach my $coor (sort keys %{ $$newCoorRef }) {
+#		print "coordinate: ", $coor, "\n";
+#		print "sequence: ", $$newCoorRef->{$coor}, "\n\n";
+#	}
+#	print "\n";
+#}
+#my @ele = sort keys %chrSeq;
+#my $res = $chrSeq{$ele[0]}->getSpecCoor(5,10);
+#print "seq at coordinate 5 to 10:\n$res\n";
+#$res = $chrSeq{$ele[0]}->getSpecCoor(4,10);
+#print "\nseq at coordinate 4 to 10:\n$res\n";
+
+####################
+#
 
 ########################################
 # Subroutines:
@@ -161,13 +185,97 @@ my %chrSeq;
 ####################
 # Print out error message for missing command line argument.
 sub argumentError {
-	my $missingArg = shift @_;
-    	die "Error \"--$missingArg\": Argument not initialised.\n";
+	my $missingArg = shift;
+    	warn "Error \"--$missingArg\": Argument not initialised.\n";
 	return 1;
 }
 
 ########################################
-# Classes:
+# Classes/Packages:
 
 ####################
-# chrSeqCor Class. Instantiated objects remember sequences, cooordinates and header information.
+# ChrSeqCor Class. Instantiated objects remember sequences, cooordinates and header information.
+{ package ChrSeqCor;
+	##########
+	# Constructor:
+	sub new {
+		my $class = shift;
+		my $header = shift;
+
+		# Test whether all arguments have been provided.
+		my %providedArgs = (class => \$class, header => \$header);
+		foreach (sort keys %providedArgs) {
+			die "Error in package ChrSeqCor: "
+			. "Argument $_ was not provided.\n" unless (${ $providedArgs{$_} });
+		}
+
+		my $self = { HEADER => $header, COOR => { 0 => "" }, NEXTCOOR => 0 };
+
+		bless $self, $class;
+	}
+
+	##########
+	# Setters:
+	sub setCoor {
+		my $self = shift;
+		my $currLen = shift;
+		my $newSeq = shift;
+		if ($self->{NEXTCOOR}) {
+			my $coordinate = $self->{NEXTCOOR};
+			$self->{COOR}->{$coordinate} = $newSeq;
+
+			my $newCoor = $coordinate + $currLen;
+			$self->{COOR}->{$newCoor} = "";
+			$self->{NEXTCOOR} = $newCoor;
+		} else {
+			$self->{COOR}->{0} = $newSeq;
+			$self->{COOR}->{$currLen} = "";
+			$self->{NEXTCOOR} = $currLen;
+		}
+		return undef;
+	}
+
+	sub stopCoor {
+		my $self = shift;
+		delete $self->{COOR}->{$self->{NEXTCOOR}};
+	}
+
+	##########
+	# Getters:
+	sub getHeader {
+		my $self = shift;
+		return $self->{HEADER};
+	}
+
+	sub getAllSeqs {
+		my $self = shift;
+		return $self->{COOR};
+	}
+
+	# Retrieve a specific sequence from a coordinate query.
+	sub getSpecCoor {
+		my $self = shift;
+		my $queryCoor = shift;
+		my $endCoor = shift;
+		my $lastRange = 0;
+		my $length = $endCoor - $queryCoor;
+		my $res;
+		if ($self->{COOR}->{$queryCoor}) {
+			$res = $self->{COOR}->{$queryCoor};
+		}
+
+		foreach my $range (sort {$a <=> $b} keys ($self->{COOR})) {
+			if ($queryCoor > $lastRange && $queryCoor < $range && !($res)) {
+				my $pos = $queryCoor - $lastRange;
+				$res = substr $self->{COOR}->{$lastRange}, $pos;
+			}
+			if ($res) {
+				$res .=  $self->{COOR}->{$range};
+			}
+			$lastRange = $range;
+		}
+		return substr $res, 0, $length;
+	}
+}
+
+
