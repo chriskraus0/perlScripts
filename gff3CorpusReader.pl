@@ -15,8 +15,9 @@ use Getopt::Long; #command line option module
 use Cwd;	#module to provide information about current directory
 
 ####################
-# get working directory
+# Get working directory and move to that directory.
 my $dir = getcwd;
+chdir $dir;
 
 ####################
 #USAGE message:
@@ -102,10 +103,10 @@ my %parsedArgs = (gff3 => \$gff3, targetList => \$targetList, fasta => \$fasta, 
 #Catch argument errors.
 my $missedArg = 0;
 foreach my $arg (sort keys %parsedArgs) {
-	$missedArg = &argumentError($arg) unless (${$parsedArgs{$arg}});
+	$missedArg = &argumentError($arg) unless (${$parsedArgs{$arg}} eq "0" || ${$parsedArgs{$arg}});
 }
 
-die "Error: Necessary arguments not provided\n\n$usageMsg\n" if ($missedArg);
+die "Error: Necessary arguments not provided.\n\n$usageMsg\n" if ($missedArg);
 
 ####################
 # Catch error in fasta file list.
@@ -179,7 +180,7 @@ my %chrSeq;
 
 ####################
 # Save gff3 coordinates.
-#EnsemblGeneID\tChromsomeNumber\tStartPos\tStopPos
+# Here are the fields: EnsemblGeneID	ChromsomeNumber	StartPos	StopPos
 my %gff3Coor;
 
 open my $fh, "<", $targetList;
@@ -199,7 +200,7 @@ close $fh;
 ####################
 # Query the gff3 file.
 
-open my $fh, "<", $gff3;
+open $fh, "<", $gff3 or die "Error $gff3: $!\n";
 
 {
 	my $readStatus = "";
@@ -215,7 +216,7 @@ open my $fh, "<", $gff3;
 						&& $line[2] eq "gene" 
 						&& $line[3] == $gff3Coor{$gene}->[2]
 						&& $line[4] == $gff3Coor{$gene}->[3]
-						&& $annotation[0] == $gene
+						&& $annotation[0] eq $gene
 				   ) {
 					# Start reading gene information.
 					$readStatus = "start";
@@ -225,14 +226,14 @@ open my $fh, "<", $gff3;
 			}
 
 		}
-		if ($readStatus && $lastGene) {
+		if ($readStatus && $lastGene && !(/\A#/)) {
 			# Read each line and remember interesting annotations.
 			my @line = split /\t/;
-			if ($line[2] eq "exon" || $line[2] eq "five_prime_UTR" ||$line[2] eq "three_prime_UTR") {
+			if ($line[2] eq "exon") { # maybe ill add this another time || $line[2] eq "five_prime_UTR" ||$line[2] eq "three_prime_UTR") {
 				if ($gff3Coor{$lastGene}->[4]) {
 					push @{ $gff3Coor{$lastGene}->[4] }, [ ($line[2], $line[3], $line[4] ) ];
 				} else {
-					$gff3Coor{$lastGene}->[4] = [ ($line[2], $line[3], $line[4] ) ];
+					$gff3Coor{$lastGene}->[4] = [ [ ($line[2], $line[3], $line[4] ) ] ];
 				}
 			}
 		}
@@ -246,8 +247,53 @@ open my $fh, "<", $gff3;
 }
 
 ####################
+# Add introns upstream and downstream regions to the genes of interest.
+
+foreach my $gene (sort keys %gff3Coor) {
+	my $lastExon = "";
+	foreach my $category (@{ $gff3Coor{$gene}->[4] }) {
+		if ($category->[0] eq "exon" && $lastExon) {
+			# Append an intron at the end of the array if it is a sequence between 2 exons.
+			push @{ $gff3Coor{$gene}->[4] }, [ ("intron", $lastExon + 1, $category->[2] - 1 ) ];
+		}
+		if ($category->[0] eq "exon") {
+			$lastExon = $category->[2];
+		}
+	}
+	$lastExon = "";
+	if ($upstream > 0) {
+			die "Error value \"$upstream\" in option --upstream is smaller than first nucleotide of chromosome $gff3Coor{$gene}->[0]"
+				if ($gff3Coor{$gene}->[2] - $upstream < 0);
+
+			push @{ $gff3Coor{$gene}->[4] }, [ ("upstream", $gff3Coor{$gene}->[2] - $upstream, $gff3Coor{$gene}->[2] - 1) ];
+	}
+	if ($downstream > 0) {
+			push @{ $gff3Coor{$gene}->[4] }, [ ("downstream", $gff3Coor{$gene}->[3] + 1, $gff3Coor{$gene}->[3] + $downstream) ];
+	}
+}
+
+####################
 # Extract all interesting genes and categories form the fasta files.
-# TODO Continue here.
+
+foreach my $header (sort keys %chrSeq) {
+	my @headInfo = map {
+				my @tmp;
+				if ($_ =~ /\Achromosome/) {
+					@tmp = split /:/, $_;
+					@tmp;
+				} else {
+					();
+				}
+				} split / /, $header;
+	foreach my $gene (sort keys %gff3Coor) {
+		if ($gff3Coor{$gene}->[0] == $headInfo[2]) {
+			foreach my $category (@{ $gff3Coor{$gene}->[4] }) {
+				print ">$gene|category:$category->[0]|chromosome:$headInfo[2]|$category->[1]|$category->[2]\n";
+				print $chrSeq{$header}->getSpecCoor($category->[1],$category->[2]), "\n";
+			}
+		} 
+	}
+}
 
 ########################################
 # Subroutines:
@@ -347,5 +393,3 @@ sub argumentError {
 		return substr $res, 0, $length;
 	}
 }
-
-
