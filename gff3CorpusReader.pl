@@ -231,9 +231,9 @@ open $fh, "<", $gff3 or die "Error $gff3: $!\n";
 			my @line = split /\t/;
 			if ($line[2] eq "exon") { # maybe ill add this another time: || $line[2] eq "five_prime_UTR" ||$line[2] eq "three_prime_UTR") {
 				if ($gff3Coor{$lastGene}->[4]) {
-					push @{ $gff3Coor{$lastGene}->[4] }, [ ($line[2], $line[3], $line[4] ) ];
+					${ $gff3Coor{$lastGene}->[4] }{$line[3]} =  [ ($line[2], $line[3], $line[4] ) ];
 				} else {
-					$gff3Coor{$lastGene}->[4] = [ [ ($line[2], $line[3], $line[4] ) ] ];
+					$gff3Coor{$lastGene}->[4] ={ $line[3] => [ ($line[2], $line[3], $line[4] ) ] };
 				}
 			}
 		}
@@ -251,15 +251,14 @@ open $fh, "<", $gff3 or die "Error $gff3: $!\n";
 
 foreach my $gene (sort keys %gff3Coor) {
 	my $lastExon = "";
-	foreach my $category (@{ $gff3Coor{$gene}->[4] }) {
-		# I did not know, but there are following exons prior to previous ones in gff3 files, as exon are positioned to corresponding
-		# (and potentitially overlapping) alternative transcript sequences. And they can even exist in duplicates etc. What a nightmare!
-		if ($category->[0] eq "exon" && $lastExon && !($category->[2] - 1 < $lastExon + 1) ) {
+	foreach my $category (sort {$a <=> $b} keys %{ $gff3Coor{$gene}->[4] }) {
+		# Eradicate multiple exons to same positions by using an hash for starting positions. 
+		if ($gff3Coor{$gene}->[4]{$category}->[0] eq "exon" && $lastExon && !($gff3Coor{$gene}->[4]{$category}->[1] - 1 < $lastExon + 1) ) {
 			# Append an intron at the end of the array if it is a sequence between 2 exons.
-			push @{ $gff3Coor{$gene}->[4] }, [ ("intron", $lastExon + 1, $category->[2] - 1 ) ];
+			$gff3Coor{$gene}->[4]{($lastExon + 1)} = [ ("intron", $lastExon + 1, $gff3Coor{$gene}->[4]{$category}->[1] - 1 ) ];
 		}
-		if ($category->[0] eq "exon") {
-			$lastExon = $category->[2];
+		if ($gff3Coor{$gene}->[4]{$category}->[0] eq "exon") {
+			$lastExon = $gff3Coor{$gene}->[4]{$category}->[2];
 		}
 	}
 	$lastExon = "";
@@ -267,10 +266,10 @@ foreach my $gene (sort keys %gff3Coor) {
 			die "Error value \"$upstream\" in option --upstream is smaller than first nucleotide of chromosome $gff3Coor{$gene}->[0]"
 				if ($gff3Coor{$gene}->[2] - $upstream < 0);
 
-			push @{ $gff3Coor{$gene}->[4] }, [ ("upstream", $gff3Coor{$gene}->[2] - $upstream, $gff3Coor{$gene}->[2] - 1) ];
+			$gff3Coor{$gene}->[4]{($gff3Coor{$gene}->[2] - $upstream)} = [ ("upstream", $gff3Coor{$gene}->[2] - $upstream, $gff3Coor{$gene}->[2] - 1) ];
 	}
 	if ($downstream > 0) {
-			push @{ $gff3Coor{$gene}->[4] }, [ ("downstream", $gff3Coor{$gene}->[3] + 1, $gff3Coor{$gene}->[3] + $downstream) ];
+			$gff3Coor{$gene}->[4]{($gff3Coor{$gene}->[3] + 1)} = [ ("downstream", $gff3Coor{$gene}->[3] + 1, $gff3Coor{$gene}->[3] + $downstream) ];
 	}
 }
 
@@ -289,9 +288,9 @@ foreach my $header (sort keys %chrSeq) {
 				} split / /, $header;
 	foreach my $gene (sort keys %gff3Coor) {
 		if ($gff3Coor{$gene}->[0] == $headInfo[2]) {
-			foreach my $category (@{ $gff3Coor{$gene}->[4] }) {
-				print ">$gene|category:$category->[0]|chromosome:$headInfo[2]|$category->[1]|$category->[2]\n";
-				foreach my $resLine ($chrSeq{$header}->getSpecCoor($category->[1],$category->[2])) {
+			foreach my $category (sort {$a <=> $b} keys %{ $gff3Coor{$gene}->[4] }) {
+				print ">$gene|category:$gff3Coor{$gene}->[4]{$category}->[0]|chromosome:$headInfo[2]|$gff3Coor{$gene}->[4]{$category}->[1]|$gff3Coor{$gene}->[4]{$category}->[2]\n";
+				foreach my $resLine ($chrSeq{$header}->getSpecCoor($gff3Coor{$gene}->[4]{$category}->[1],$gff3Coor{$gene}->[4]{$category}->[2])) {
 					print "$resLine\n";
 				}
 			}
