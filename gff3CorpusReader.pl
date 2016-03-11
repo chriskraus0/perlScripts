@@ -229,7 +229,7 @@ open $fh, "<", $gff3 or die "Error $gff3: $!\n";
 		if ($readStatus && $lastGene && !(/\A#/)) {
 			# Read each line and remember interesting annotations.
 			my @line = split /\t/;
-			if ($line[2] eq "exon") { # maybe ill add this another time || $line[2] eq "five_prime_UTR" ||$line[2] eq "three_prime_UTR") {
+			if ($line[2] eq "exon") { # maybe ill add this another time: || $line[2] eq "five_prime_UTR" ||$line[2] eq "three_prime_UTR") {
 				if ($gff3Coor{$lastGene}->[4]) {
 					push @{ $gff3Coor{$lastGene}->[4] }, [ ($line[2], $line[3], $line[4] ) ];
 				} else {
@@ -252,7 +252,9 @@ open $fh, "<", $gff3 or die "Error $gff3: $!\n";
 foreach my $gene (sort keys %gff3Coor) {
 	my $lastExon = "";
 	foreach my $category (@{ $gff3Coor{$gene}->[4] }) {
-		if ($category->[0] eq "exon" && $lastExon) {
+		# I did not know, but there are following exons prior to previous ones in gff3 files, as exon are positioned to corresponding
+		# (and potentitially overlapping) alternative transcript sequences. And they can even exist in duplicates etc. What a nightmare!
+		if ($category->[0] eq "exon" && $lastExon && !($category->[2] - 1 < $lastExon + 1) ) {
 			# Append an intron at the end of the array if it is a sequence between 2 exons.
 			push @{ $gff3Coor{$gene}->[4] }, [ ("intron", $lastExon + 1, $category->[2] - 1 ) ];
 		}
@@ -376,7 +378,7 @@ sub argumentError {
 		my $queryCoor = shift;
 		my $endCoor = shift;
 		my $lastRange = 0;
-		my $length = $endCoor - $queryCoor;
+		#my $length = $endCoor - $queryCoor;
 		my @res;
 		if ($self->{COOR}->{$queryCoor}) {
 			push @res, $self->{COOR}->{$queryCoor};
@@ -398,7 +400,7 @@ sub argumentError {
 				push @res, $self->{COOR}->{$endCoor};
 				last;
 			}
-			if (@res) {
+			if (@res && $range > $queryCoor) {
 				push @res, $self->{COOR}->{$range};
 			}
 			$lastRange = $range;
