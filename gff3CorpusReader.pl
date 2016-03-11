@@ -212,7 +212,7 @@ open $fh, "<", $gff3 or die "Error $gff3: $!\n";
 			my @annotation = split /;/, $line[8];
 			$annotation[0] =~ s/\AID=gene://;
 			foreach my $gene (sort keys %gff3Coor) {
-				if ($line[0] == $gff3Coor{$gene}->[0] 
+				if ($line[0] eq $gff3Coor{$gene}->[0]
 						&& $line[2] eq "gene" 
 						&& $line[3] == $gff3Coor{$gene}->[2]
 						&& $line[4] == $gff3Coor{$gene}->[3]
@@ -289,7 +289,9 @@ foreach my $header (sort keys %chrSeq) {
 		if ($gff3Coor{$gene}->[0] == $headInfo[2]) {
 			foreach my $category (@{ $gff3Coor{$gene}->[4] }) {
 				print ">$gene|category:$category->[0]|chromosome:$headInfo[2]|$category->[1]|$category->[2]\n";
-				print $chrSeq{$header}->getSpecCoor($category->[1],$category->[2]), "\n";
+				foreach my $resLine ($chrSeq{$header}->getSpecCoor($category->[1],$category->[2])) {
+					print "$resLine\n";
+				}
 			}
 		} 
 	}
@@ -375,21 +377,32 @@ sub argumentError {
 		my $endCoor = shift;
 		my $lastRange = 0;
 		my $length = $endCoor - $queryCoor;
-		my $res;
+		my @res;
 		if ($self->{COOR}->{$queryCoor}) {
-			$res = $self->{COOR}->{$queryCoor};
+			push @res, $self->{COOR}->{$queryCoor};
 		}
 
 		foreach my $range (sort {$a <=> $b} keys ($self->{COOR})) {
-			if ($queryCoor > $lastRange && $queryCoor < $range && !($res)) {
+			if ($queryCoor > $lastRange && $queryCoor < $range && !(@res)) {
 				my $pos = $queryCoor - $lastRange;
-				$res = substr $self->{COOR}->{$lastRange}, $pos;
+				push @res, (substr $self->{COOR}->{$lastRange}, $pos);
 			}
-			if ($res) {
-				$res .=  $self->{COOR}->{$range};
+			if ($endCoor > $lastRange && $endCoor < $range) {
+				pop @res;
+				# Determine the substring end position of this array slice.
+				my $pos = $endCoor - $lastRange;
+				push @res, (substr $self->{COOR}->{$lastRange}, 0, $pos);
+				last;
+			}
+			if ($self->{COOR}->{$endCoor}) {
+				push @res, $self->{COOR}->{$endCoor};
+				last;
+			}
+			if (@res) {
+				push @res, $self->{COOR}->{$range};
 			}
 			$lastRange = $range;
 		}
-		return substr $res, 0, $length;
+		return @res;
 	}
 }
