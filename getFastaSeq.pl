@@ -10,7 +10,7 @@
 use warnings;
 use strict;
 use utf8;
-use 5.010A
+use 5.010;
 use Getopt::Long;
 use Cwd;
 ####################
@@ -56,12 +56,13 @@ open my $fh, "<", $fasta or die "Error: $fasta $!\n";
 
 close $fh;
 
-$counter = 1;
+my $counter = 1;
 
 foreach my $header (sort keys %seq) {
 	my $outName = "in_" . "$counter" . "_.fa";
 	open my $ofh, ">", $outName or die "Error: $outName: $!\n";
-	print "$header\n";
-	print "$seq{$header}\n";
+	print $ofh "$header\n";
+	print $ofh "$seq{$header}\n";
 	close $ofh;
+	$counter ++;
 }
