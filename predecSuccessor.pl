@@ -32,7 +32,9 @@ my $helpMsg = "NAME\n\n"
 		. "\n\nOptions:\n\n"
 		. "\t--suc=<T|F>\tadd \"T\" for successor (true) OR \"F\" for predecessor (false)\n\n"
 		. "\t--csv=<FILE>\tinsert csv file or matrix from which will be read\n\n"
-		. "\t--string=<STRING>\tinsert single (continuous) string of interest\n\n";
+		. "\t--string=<STRING>\tinsert single (continuous) string of interest\n\n"
+		. "\t--stringEnd=<[a-zA-Z0-9]\$*|!>\t stringEnd contains the \"End of String\" character.\n"
+		. "\t\t\toften \"\$\" is used. \"!\" defines no \"End of String\" character.\n\n";
 
 ####################
 # Catch argument errors.
@@ -41,7 +43,7 @@ if (@ARGV == 1 && $ARGV[0] eq "--help") {
 	exit 0;
 }
 
-warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 3);
+warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 4);
 
 ####################
 # Read all parameters from command line options.
@@ -49,13 +51,15 @@ warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 3);
 my $successor;
 my $csvFile;
 my $myString;
+my $stringEnd;
 
 GetOptions ("suc=s" => \$successor,
 	"csv=s" => \$csvFile,
-	"string=s" => \$myString)
+	"string=s" => \$myString,
+	"stringEnd=s" => \$stringEnd)
 or die("Error in command line arguments.\n" . "$usageMsg");
 
-my %parsedArgs = ("suc=s" => \$successor, "csv=s" => \$csvFile);
+my %parsedArgs = ("suc=s" => \$successor, "csv=s" => \$csvFile, "string=s" => \$myString, "stringEnd=s" => \$stringEnd);
 
 ####################
 # Catch argument errors.
@@ -70,6 +74,15 @@ die "Error: Necessary arguments not provided.\n\n$usageMsg\n" if ($missedArg);
 # Catch argument content errors.
 die "Error: Option \"--suc\" contains not allowed signs: \"$successor\".\n"
 	. "Only \"T\" (true) or \"F\" (false) allowed\n" unless ($successor eq "T" || $successor eq "F");
+
+die "Error: Option \"--stringEnd\" must contain a single ASCII character or \'!\' for nothing\n. \"$stringEnd\" is not allowed.\n"
+	unless ($stringEnd =~ /\S/ || $stringEnd =~ /!/);
+
+if ($stringEnd eq "!") {
+	$stringEnd = "";
+} elsif ($stringEnd eq '$' || $stringEnd eq '*') {
+	$stringEnd =~ s/^/\\/;
+}
 
 ####################
 # Read csv file.
@@ -86,11 +99,11 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 		chomp; 
 		
 		# Read rows as current strings and columns as successors.
-		if ((/\A\w/ || /\A\$/) && $successor eq "T") {
+		if ((/\A\w+;[0-1]/ || /\A$stringEnd;[0-1]/) && $successor eq "T") {
 			my @line = split /;/;
 			my $currString = shift @line;
 			$query{$currString} = [ ( @line ) ];
-		} elsif (/\w+\$;\w+\$/ && $successor eq "T") {
+		} elsif ((/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "T") {
 			@result = split /;/;
 
 			# First column seems to be empty anyway and will be discarded.
@@ -98,7 +111,7 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 		}
 		
 		# Read columns as current strings and rows as predecessors.
-		elsif (/\w+\$;\w+\$/ && $successor eq "F") {
+		elsif ((/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "F") {
 			my @line = split /;/;
 			# First column seems to be empty anyway and will be discarded.
 			shift @line;
@@ -108,7 +121,7 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 				$pos ++;
 				push @queryArray, $_;
 			}
-		} elsif ((/\A\w/ || /\A\$/) && $successor eq "F") {
+		} elsif ((/\A\w+;[0-1]/ || /\A$stringEnd;[0-1]/) && $successor eq "F") {
 			my @line = split /;/;
 			shift @line;
 			push @result, [ ($col, @line) ];
@@ -136,14 +149,17 @@ if ($successor eq "T") {
 		die "Error: The query \"$myString\" is not part of this table: $csvFile\n";
 	}
 } elsif ($successor eq "F") {
+	my $hit = 0;
 	if ($query{$myString}) {
 		# @results an @array of an @array which includes the column number in the first element thus "+1".
 		my $queryPos = $query{$myString} + 1;
 		foreach my $entry (@result) {
 			if ($entry->[$queryPos] == "1") {
 				print "$queryArray[$entry->[0]];";
+				$hit ++;
 			}
 		}
+		print "no predecessor found for string \"$myString\"" if ($hit == 0);
 		print "\n";
 	} else {
 		die "Error: The query \"$myString\" is not part of this table: $csvFile\n";
