@@ -4,6 +4,6 @@
 
 Just clone this repository.
 
-Type the following to create a usable version of "slurmScriptCreator.pl":
-chmod u+x slurmScriptCreator.pl
+Type the following to create a usable version of the perl scripts:
+chmod u+x *.pl
 READY.
