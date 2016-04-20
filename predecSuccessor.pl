@@ -106,7 +106,7 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 			# First column seems to be empty anyway and will be discarded.
 			shift @result;
 			$headerIsRead = 1;
-		} elsif ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "T") {
+		} elsif ((/\A[^;]+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "T") {
 			my @line = split /;/;
 			my $currString = shift @line;
 			@line = map {$_ eq "" ? "0" : $_} @line;
@@ -125,7 +125,7 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 				push @queryArray, $_;
 			}
 			$headerIsRead = 1;
-		} elsif ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "F") {
+		} elsif ((/\A[^;]+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "F") {
 			my @line = split /;/;
 			my $rowName = shift @line;
 			@line = map {$_ eq "" ? "0" : $_} @line;
