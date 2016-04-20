@@ -94,23 +94,27 @@ my @queryArray;
 open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 
 {
+	# Bool to make sure that only one line is parsed as header
+	my $headerIsRead = undef;
+
 	while (<$fh>) {
 		chomp; 
 		
 		# Read rows as current strings and columns as successors.
-		if ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "T") {
+		if (!$headerIsRead && (/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "T") {
+			@result = split /;/;
+			# First column seems to be empty anyway and will be discarded.
+			shift @result;
+			$headerIsRead = 1;
+		} elsif ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "T") {
 			my @line = split /;/;
 			my $currString = shift @line;
 			@line = map {$_ eq "" ? "0" : $_} @line;
 			$query{$currString} = [ ( @line ) ];
-		} elsif ((/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "T") {
-			@result = split /;/;
-			# First column seems to be empty anyway and will be discarded.
-			shift @result;
 		}
 		
 		# Read columns as current strings and rows as predecessors.
-		elsif ((/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "F") {
+		elsif (!$headerIsRead && (/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "F") {
 			my @line = split /;/;
 			# First column seems to be empty anyway and will be discarded.
 			shift @line;
@@ -120,11 +124,17 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 				$pos ++;
 				push @queryArray, $_;
 			}
+			$headerIsRead = 1;
 		} elsif ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "F") {
 			my @line = split /;/;
 			my $rowName = shift @line;
 			@line = map {$_ eq "" ? "0" : $_} @line;
 			push @result, [ ($rowName, @line) ];
+		}
+
+		else {
+			my $rowPart = substr $_, 0, 30;
+			die "Could not parse row starting with: $rowPart ...";
 		}
 	}
 }
@@ -172,7 +182,7 @@ if ($successor eq "T") {
 # Print out error message for missing command line argument.
 sub argumentError {
 	my $missingArg = shift;
-    	warn "Error \"--$missingArg\": Argument not initialised.\n";
+	warn "Error \"--$missingArg\": Argument not initialised.\n";
 	return 1;
 }
 
