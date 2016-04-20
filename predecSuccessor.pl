@@ -99,13 +99,13 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 		chomp; 
 		
 		# Read rows as current strings and columns as successors.
-		if ((/\A\w+;[0-1]/ || /\A$stringEnd;[0-1]/) && $successor eq "T") {
+		if ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "T") {
 			my @line = split /;/;
 			my $currString = shift @line;
+			@line = map {$_ eq "" ? "0" : $_} @line;
 			$query{$currString} = [ ( @line ) ];
 		} elsif ((/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "T") {
 			@result = split /;/;
-
 			# First column seems to be empty anyway and will be discarded.
 			shift @result;
 		}
@@ -121,9 +121,10 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 				$pos ++;
 				push @queryArray, $_;
 			}
-		} elsif ((/\A\w+;[0-1]/ || /\A$stringEnd;[0-1]/) && $successor eq "F") {
+		} elsif ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "F") {
 			my @line = split /;/;
 			shift @line;
+			@line = map {$_ eq "" ? "0" : $_} @line;
 			push @result, [ ($col, @line) ];
 			$col ++;
 		}
