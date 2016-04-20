@@ -94,7 +94,6 @@ my @queryArray;
 open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 
 {
-	my $col = 0;
 	while (<$fh>) {
 		chomp; 
 		
@@ -123,10 +122,9 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 			}
 		} elsif ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "F") {
 			my @line = split /;/;
-			shift @line;
+			my $rowName = shift @line;
 			@line = map {$_ eq "" ? "0" : $_} @line;
-			push @result, [ ($col, @line) ];
-			$col ++;
+			push @result, [ ($rowName, @line) ];
 		}
 	}
 }
@@ -156,7 +154,7 @@ if ($successor eq "T") {
 		my $queryPos = $query{$myString} + 1;
 		foreach my $entry (@result) {
 			if ($entry->[$queryPos] == "1") {
-				print "$queryArray[$entry->[0]];";
+				print "$entry->[0];";
 				$hit ++;
 			}
 		}
