@@ -163,7 +163,10 @@ if ($successor eq "T") {
 		# @results an @array of an @array which includes the row name in the first element thus "+1".
 		my $queryPos = $query{$myString} + 1;
 		foreach my $entry (@result) {
-			if ($entry->[$queryPos] == "1") {
+			# The behaviour of split(/;/) used above may lead to undefined entries on trailing
+			# "" or 0-fields. That's (very) good for memory but produces warnings if fields
+			# are not checked.
+			if (defined($entry->[$queryPos]) && $entry->[$queryPos] == "1") {
 				print "$entry->[0];";
 				$hit ++;
 			}
