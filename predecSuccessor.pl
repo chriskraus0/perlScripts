@@ -160,7 +160,7 @@ if ($successor eq "T") {
 } elsif ($successor eq "F") {
 	my $hit = 0;
 	if ($query{$myString}) {
-		# @results an @array of an @array which includes the column number in the first element thus "+1".
+		# @results an @array of an @array which includes the row name in the first element thus "+1".
 		my $queryPos = $query{$myString} + 1;
 		foreach my $entry (@result) {
 			if ($entry->[$queryPos] == "1") {
