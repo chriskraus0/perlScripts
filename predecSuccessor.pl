@@ -94,24 +94,27 @@ my @queryArray;
 open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 
 {
-	my $col = 0;
+	# Bool to make sure that only one line is parsed as header
+	my $headerIsRead = undef;
+
 	while (<$fh>) {
 		chomp; 
 		
 		# Read rows as current strings and columns as successors.
-		if ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "T") {
+		if (!$headerIsRead && (/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "T") {
+			@result = split /;/;
+			# First column seems to be empty anyway and will be discarded.
+			shift @result;
+			$headerIsRead = 1;
+		} elsif ((/\A[^;]+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "T") {
 			my @line = split /;/;
 			my $currString = shift @line;
 			@line = map {$_ eq "" ? "0" : $_} @line;
 			$query{$currString} = [ ( @line ) ];
-		} elsif ((/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "T") {
-			@result = split /;/;
-			# First column seems to be empty anyway and will be discarded.
-			shift @result;
 		}
 		
 		# Read columns as current strings and rows as predecessors.
-		elsif ((/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "F") {
+		elsif (!$headerIsRead && (/[a-zA-z]+$stringEnd;[a-zA-z]+$stringEnd/) && $successor eq "F") {
 			my @line = split /;/;
 			# First column seems to be empty anyway and will be discarded.
 			shift @line;
@@ -121,12 +124,17 @@ open my $fh, "<", $csvFile or die "Error: $csvFile: $!\n";
 				$pos ++;
 				push @queryArray, $_;
 			}
-		} elsif ((/\A\w+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "F") {
+			$headerIsRead = 1;
+		} elsif ((/\A[^;]+;[0-1;]/ || /\A$stringEnd;[0-1;]/) && $successor eq "F") {
 			my @line = split /;/;
-			shift @line;
+			my $rowName = shift @line;
 			@line = map {$_ eq "" ? "0" : $_} @line;
-			push @result, [ ($col, @line) ];
-			$col ++;
+			push @result, [ ($rowName, @line) ];
+		}
+
+		else {
+			my $rowPart = substr $_, 0, 30;
+			die "Could not parse row starting with: $rowPart ...";
 		}
 	}
 }
@@ -152,11 +160,14 @@ if ($successor eq "T") {
 } elsif ($successor eq "F") {
 	my $hit = 0;
 	if ($query{$myString}) {
-		# @results an @array of an @array which includes the column number in the first element thus "+1".
+		# @results an @array of an @array which includes the row name in the first element thus "+1".
 		my $queryPos = $query{$myString} + 1;
 		foreach my $entry (@result) {
-			if ($entry->[$queryPos] == "1") {
-				print "$queryArray[$entry->[0]];";
+			# The behaviour of split(/;/) used above may lead to undefined entries on trailing
+			# "" or 0-fields. That's (very) good for memory but produces warnings if fields
+			# are not checked.
+			if (defined($entry->[$queryPos]) && $entry->[$queryPos] == "1") {
+				print "$entry->[0];";
 				$hit ++;
 			}
 		}
@@ -174,7 +185,7 @@ if ($successor eq "T") {
 # Print out error message for missing command line argument.
 sub argumentError {
 	my $missingArg = shift;
-    	warn "Error \"--$missingArg\": Argument not initialised.\n";
+	warn "Error \"--$missingArg\": Argument not initialised.\n";
 	return 1;
 }
 
