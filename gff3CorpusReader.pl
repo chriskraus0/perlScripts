@@ -22,7 +22,7 @@ chdir $dir;
 ####################
 #USAGE message:
 my $usageMsg = "USAGE: ./gff3CorpusReader.pl --gff3=<FILE> --targetList=<FILE> --fasta=\'<FILE,FILE,FILE...>\'"
-		. "--upstream=<NUM> --downstream=<NUM>\n\n"
+		. "--upstream=<NUM> --downstream=<NUM> --addExonInfo=<Y|N>\n\n"
 		. "For help type $0 --help\n";
 
 
@@ -70,6 +70,12 @@ my $helpMsg = "NAME\n\n"
 		. "\t\t\t be provided as separte fasta entry for that specific gene.\n"
 		. "\t\t\t Default value is \"2000\"\n\n"
 
+		. "\t--addExonInfo=<Y|N>\tActivate or inactivate additional information provided\n"
+		. "\t\t\t by an ensembl type gff3 file for all included exons (this particular\n"
+		. "\t\t\t information is given in the 9th column of any ensembl specific gff3 file).\n"
+		. "\t\t\t this option includes the parameters \"Y\" (for yes) and \"N\" (for no)\n"
+		. "\t\t\t (one of both is obligatory)\n\n".
+
 		. "\n";
 
 ####################
@@ -79,7 +85,7 @@ if (@ARGV == 1 && $ARGV[0] eq "--help") {
 	exit 0;
 }
 
-warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 5);
+warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 6);
 
 ####################
 #Read all parameters from command line options.
@@ -89,15 +95,17 @@ my $targetList;
 my $fasta;
 my $upstream;
 my $downstream;
+my $addExonInfo; 
 
 GetOptions ("gff3=s" => \$gff3,
 	"targetList=s" => \$targetList,
 	"fasta=s" => \$fasta,
 	"upstream=i"   => \$upstream,
-	"downstream=i" => \$downstream)
+	"downstream=i" => \$downstream,
+	"addExonInfo=s" => \$addExonInfo)
 or die("Error in command line arguments.\n" . "$usageMsg");
 
-my %parsedArgs = (gff3 => \$gff3, targetList => \$targetList, fasta => \$fasta, upstream => \$upstream, downstream => \$downstream);
+my %parsedArgs = (gff3 => \$gff3, targetList => \$targetList, fasta => \$fasta, upstream => \$upstream, downstream => \$downstream, addExonInfo => \$addExonInfo);
 
 ####################
 #Catch argument errors.
@@ -115,6 +123,11 @@ die ("Error in --regex option.\n"
 . "$usageMsg")
 unless ($fasta =~ m/(\S+\,)+/ || $fasta =~ m/(\S+)/);
 
+####################
+# Check for consistency in "addExonInfo" option.
+die "Error: Value $addExonInfo in option \"--addExonInfo\" is neither \"N\" nor \"Y\"\n" unless ($addExonInfo eq "N" || $addExonInfo eq "Y");
+
+
 ###################
 # Store information from Fasta files.
 my @fastaFileList;
@@ -127,9 +140,9 @@ if ($fasta =~ m/\,/) {
 }
 
 ####################
-# Save chromosome sequences with coordiantes.
+# Save chromosome sequences with coordinates.
 
-# Save the chromosome sequences and cooridinates in this hash table.
+# Save the chromosome sequences and coordinates in this hash table.
 my %chrSeq; 
 
 {
@@ -231,9 +244,9 @@ open $fh, "<", $gff3 or die "Error $gff3: $!\n";
 			my @line = split /\t/;
 			if ($line[2] eq "exon") { # maybe ill add this another time: || $line[2] eq "five_prime_UTR" ||$line[2] eq "three_prime_UTR") {
 				if ($gff3Coor{$lastGene}->[4]) {
-					${ $gff3Coor{$lastGene}->[4] }{$line[3]} =  [ ($line[2], $line[3], $line[4] ) ];
+					${ $gff3Coor{$lastGene}->[4] }{$line[3]} =  [ ($line[2], $line[3], $line[4], $line[8] ) ];
 				} else {
-					$gff3Coor{$lastGene}->[4] ={ $line[3] => [ ($line[2], $line[3], $line[4] ) ] };
+					$gff3Coor{$lastGene}->[4] ={ $line[3] => [ ($line[2], $line[3], $line[4], $line[8] ) ] };
 				}
 			}
 		}
@@ -289,7 +302,11 @@ foreach my $header (sort keys %chrSeq) {
 	foreach my $gene (sort keys %gff3Coor) {
 		if ($gff3Coor{$gene}->[0] == $headInfo[2]) {
 			foreach my $category (sort {$a <=> $b} keys %{ $gff3Coor{$gene}->[4] }) {
-				print ">$gene|category:$gff3Coor{$gene}->[4]{$category}->[0]|chromosome:$headInfo[2]|$gff3Coor{$gene}->[4]{$category}->[1]|$gff3Coor{$gene}->[4]{$category}->[2]\n";
+				if ($addExonInfo eq "Y" && $gff3Coor{$gene}->[4]{$category}->[3]) {
+					print ">$gene|category:$gff3Coor{$gene}->[4]{$category}->[0]|chromosome:$headInfo[2]|$gff3Coor{$gene}->[4]{$category}->[1]|$gff3Coor{$gene}->[4]{$category}->[2]|info:$gff3Coor{$gene}->[4]{$category}->[3]\n";
+				} else {
+					print ">$gene|category:$gff3Coor{$gene}->[4]{$category}->[0]|chromosome:$headInfo[2]|$gff3Coor{$gene}->[4]{$category}->[1]|$gff3Coor{$gene}->[4]{$category}->[2]\n";
+				}
 				foreach my $resLine ($chrSeq{$header}->getSpecCoor($gff3Coor{$gene}->[4]{$category}->[1],$gff3Coor{$gene}->[4]{$category}->[2])) {
 					print "$resLine\n";
 				}
