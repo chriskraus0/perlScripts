@@ -90,12 +90,17 @@ my @queryResult;
 			die "Error: $samFile: current position $ref[3] is smaller than first position $firstPos in feature \"$line[2]\"\n"
 				. "Must be a sorted sam file\n" if ($ref[3] < $firstPos);
 
-			$lastPos = $ref[3] - $firstPos;
+			if ($ref[3] == $firstPos) {
+				$lastPos = 1;
+			} else {
+				$lastPos = $ref[3] - $firstPos;
+			}
+
 			my $refLen = $ref[4] - $ref[3];
 			unless ($refResult{$line[2]}) {
 				$refResult{$line[2]} = [ (@ref, $lastPos, $refLen + $lastPos) ];
 			}
-			push @queryResult, [ ($line[9], $line[3], $line[3] + length($line[9])) ];
+			push @queryResult, [ ($line[9], $lastPos + $line[3], $lastPos + $line[3] + length($line[9])) ];
 		}
 	}
 }
