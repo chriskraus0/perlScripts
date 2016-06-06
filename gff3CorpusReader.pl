@@ -74,7 +74,7 @@ my $helpMsg = "NAME\n\n"
 		. "\t\t\t by an ensembl type gff3 file for all included exons (this particular\n"
 		. "\t\t\t information is given in the 9th column of any ensembl specific gff3 file).\n"
 		. "\t\t\t this option includes the parameters \"Y\" (for yes) and \"N\" (for no)\n"
-		. "\t\t\t (one of both is obligatory)\n\n".
+		. "\t\t\t (one of both is obligatory)\n\n"
 
 		. "\n";
 
