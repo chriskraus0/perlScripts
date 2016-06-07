@@ -126,7 +126,7 @@ my %seqCoor;
 		chomp;
 		unless ( /\A#/ )  {
 			my @line = split /\t/;
-			$seqCoor{$line[0]} = [ ($line[1], $line[2], $line[3]) ];
+			$seqCoor{$line[1]} = [ ($line[0], $line[2], $line[3]) ];
 		}
 	}
 }
@@ -135,11 +135,14 @@ my %seqCoor;
 # Extract all requested sequences.
 
 foreach my $query (sort keys %seqCoor) {
-	if ($chrSeq{$query}) {
-		print $query, "\|", $seqCoor{$query}->[0], "\|", $seqCoor{$query}->[1], "\|", $seqCoor{$query}->[2], "\n";
-		print $chrSeq{$query}->getSpecCoor($seqCoor{$query}->[1],$seqCoor{$query}->[2]), "\n";
+	if ($chrSeq{$seqCoor{$query}->[0]}) {
+		print $seqCoor{$query}->[0], "\|", $query, "\|", $seqCoor{$query}->[1], "\|", $seqCoor{$query}->[2], "\n";
+		foreach my $line ($chrSeq{$seqCoor{$query}->[0]}->getSpecCoor($seqCoor{$query}->[1],$seqCoor{$query}->[2])) {
+			print $line;
+		}
+		print "\n";
 	} else {
-		die "Error the fasta header \"$query\" was not found in file \"$fastaFile\"";
+		die "Error the fasta header \"" . $seqCoor{$query}->[0] . "\" was not found in file \"$fastaFile\"\n";
 	}
 }
 
