@@ -258,7 +258,7 @@ sub argumentError {
 
 			} elsif (@res && $range > $queryCoor) {
 
-				push @res, $self->{COOR}->{$range};
+				push @res, $self->{COOR}->{$lastRange};
 
 			}
 

@@ -401,25 +401,52 @@ sub argumentError {
 		}
 
 		foreach my $range (sort {$a <=> $b} keys ($self->{COOR})) {
+
+			# Deal with the query start.
 			if ($queryCoor > $lastRange && $queryCoor < $range && !(@res)) {
+
 				my $pos = $queryCoor - $lastRange;
-				push @res, (substr $self->{COOR}->{$lastRange}, $pos);
+				
+				# If the endCoor is smaller than the current range then extract the array slice and stop.
+				if ($endCoor < $range) {
+					my $endPos = $range - $endCoor;
+
+					#Change the distance to end of the array slice into distance to stop from the end.
+					$endPos = $endPos * (-1);
+
+					push @res, (substr $self->{COOR}->{$lastRange}, $pos, $endPos);
+					last;
+
+				} else {
+
+					push @res, (substr $self->{COOR}->{$lastRange}, $pos);
+
+				}
+
+			} elsif (@res && $range > $queryCoor) {
+
+				push @res, $self->{COOR}->{$lastRange};
+
 			}
+
+			# Deal with the query end.
 			if ($endCoor > $lastRange && $endCoor < $range) {
+
 				pop @res;
 				# Determine the substring end position of this array slice.
 				my $pos = $endCoor - $lastRange;
 				push @res, (substr $self->{COOR}->{$lastRange}, 0, $pos);
 				last;
-			}
-			if ($self->{COOR}->{$endCoor}) {
+
+			} elsif ($range == $endCoor) {
+
 				push @res, $self->{COOR}->{$endCoor};
 				last;
-			}
-			if (@res && $range > $queryCoor) {
-				push @res, $self->{COOR}->{$range};
-			}
+
+			} 			
+
 			$lastRange = $range;
+
 		}
 		return @res;
 	}
