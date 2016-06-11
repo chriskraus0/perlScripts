@@ -100,7 +100,11 @@ my @queryResult;
 			unless ($refResult{$line[2]}) {
 				$refResult{$line[2]} = [ (@ref, $lastPos, $refLen + $lastPos) ];
 			}
-			push @queryResult, [ ($line[9], $lastPos + $line[3], $lastPos + $line[3] + length($line[9])) ];
+			if (length($line[9]) > 14) {
+				push @queryResult, [ ($line[0], $lastPos + $line[3], $lastPos + $line[3] + length($line[9])) ];
+			} else {
+				push @queryResult, [ ($line[9], $lastPos + $line[3], $lastPos + $line[3] + length($line[9])) ];
+			}
 		}
 	}
 }
