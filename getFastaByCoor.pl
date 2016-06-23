@@ -45,7 +45,9 @@ my $helpMsg = "NAME\n\n"
 		. "\t\t\t which includes information about the fasta file\n"
 		. "\t\t\t and the start and stop position of the sequence of interest.\n"
 		. "\t\t\t FIELDS:\n"
-		. "\t\t\t SubjectFastaHeader\tQueryFastaHeader\tstartPos\tendPos\n"
+		. "\t\t\t SubjectFastaHeader\tQueryFastaHeader\tstartPos\tendPos\n\n"
+		. "\t\t\t Example:\n"
+		. "\t\t\t >3R dna:chromosome chromosome:BDGP6:3R:1:32079331:1 REF	Abd-B_CRM_Region	16925210	16974236\n"
 
 		. "\n";
 
