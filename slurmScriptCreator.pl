@@ -9,10 +9,16 @@ use strict;
 use 5.010;
 use utf8;
 use Getopt::Long;
+use Cwd;	# Module to provide information about the current directory.
+
+####################
+# Get working directory and move to that directory.
+my $dir = getcwd;
+chdir $dir;
 
 ####################
 # USAGE message:
-my $usageMsg = "\nUSAGE: ./create_slurm_scripts.pl --dir=<.>"
+my $usageMsg = "\nUSAGE: ./create_slurm_scripts.pl "
 	. "--iter=<NUM> --template=<EXPERIMENT.exp> --line=\"<NUM,NUM,NUM,...>\""
 	. "--regex=\'</REGEX/,/REGEX/,...>\' --outpat=<OutPatternName> --cpu=<NUM> --time=<NUM> --mem=<NUM>\n"
 	. "--javaDir=\'<JavaExcutableDirectory>\' --batchRunnerDir=\'<ModulebatchRunnerDirectory>\'\n\n"
@@ -32,12 +38,6 @@ my $helpMsg = "NAME\n\n"
 		. "\tAll 11 command line options are required.\n\n"
 
 		. "OPTIONS\n"
-
-		. "\t--dir=<.>\tThe directory where the output will be deployed to.\n"
-		. "\t\t\t If the directory does\n"
-		. "\t\t\t not exist then there will be an error message.\n"
-		. "\t\t\t most of the time its fine to give the current diretory by\n"
-		. "\t\t\t using e.g. --dir=\".\"\n\n"
 
 		. "\t --iter=<NUM>\tThe number of iterations or experiments and\n"
 		. "\t\t\t SLURM scripts which will be generated\n\n"
@@ -92,11 +92,10 @@ if (@ARGV == 1 && $ARGV[0] eq "--help") {
 	exit 0;
 }
 
-warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 11);
+warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 10);
 
 ####################
 #Read all parameters from command line options.
-my $currDir;
 my $iter;
 my $template;
 my $line;
@@ -108,8 +107,7 @@ my $mem;
 my $javaDir;
 my $batchRunnerDir;
 
-GetOptions ("dir=s" => \$currDir,
-	"iter=i" => \$iter,
+GetOptions ("iter=i" => \$iter,
 	"template=s" => \$template,
 	"line=s"   => \$line,
 	"regex=s" => \$regexCh,
@@ -123,7 +121,6 @@ or die("Error in command line arguments.\n" . "$usageMsg");
 
 ####################
 #Catch argument errors.
-&argumentError("dir", $usageMsg) unless ($currDir);
 &argumentError("iter", $usageMsg) unless ($iter);
 &argumentError("template", $usageMsg) unless ($template);
 &argumentError("line", $usageMsg) unless ($line);
@@ -134,10 +131,6 @@ or die("Error in command line arguments.\n" . "$usageMsg");
 &argumentError("mem", $usageMsg) unless ($mem);
 &argumentError("javaDir", $usageMsg) unless ($javaDir);
 &argumentError("batchRunnerDir", $usageMsg) unless ($batchRunnerDir);
-
-####################
-#Change directory to current directory.
-chdir $currDir or die "Error $currDir: $!\n";
 
 ####################
 # Catch non-number errors.
