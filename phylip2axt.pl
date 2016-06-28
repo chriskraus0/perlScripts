@@ -47,6 +47,10 @@ my $helpMsg = "NAME\n\n"
 		. "\t --phyFile=<FILE>\tInput of the provided phylipp file\n"
 		. "\t\t\t which should be searched.\n\n"
 
+		. "\t --setFrame=<TRUE|FALSE>\tChanges the amount of nucleotides, so\n"
+		. "\t\t\t so that all nucleotides are \"in frame\" (can be \n"
+		. "\t\t\t divided by 3; triplets).\n"
+
 		. "\n";
 
 
@@ -57,18 +61,20 @@ if (@ARGV == 1 && $ARGV[0] eq "--help") {
 	exit 0;
 }
 
-warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 1);
+warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 2);
 
 
 ####################
 # Read all parameters from command line options.
 
 my $phyFile;
+my $frame;
 
-GetOptions ("phyFile=s" => \$phyFile)
+GetOptions ("phyFile=s" => \$phyFile,
+		"setFrame=s" => \$frame)
 or die("Error in command line arguments.\n" . "$usageMsg");
 
-my %parsedArgs = (phyFile => \$phyFile);
+my %parsedArgs = (phyFile => \$phyFile, setFrame => \$frame);
 
 ####################
 # Catch argument errors.
@@ -80,7 +86,11 @@ foreach my $arg (sort keys %parsedArgs) {
 die "Error: Necessary arguments not provided.\n\n$usageMsg\n" if ($missedArg);
 
 ####################
-# Read phylipp file and extract alignment information.
+# Catch booleand for frame not set argument.
+die "Error: \"--setFrame\" was \"$frame\", but must be either \"TRUE\" or \"FALSE\"\n" unless ($frame eq "TRUE" || $frame eq "FALSE");
+
+####################
+# Read phylip file and extract alignment information.
 
 # The hash %align will hold the header information and the relevant sequences.
 my %align;
@@ -91,9 +101,20 @@ while (<$fh>) {
 	chomp;
 	unless (/\A [0-9]+ [0-9]+/) {
 		my $line = $_;
-		$line =~ m/\A(\S+)\s+([ATGCatgc-]+)/;
+		$line =~ m/\A(\S+)\s+([ATGCNatgcn-]+)/;
 		my $header = $1;
 		my $sequence = $2;
+		
+		# If necessary adjust the sequence to a length which can be divided by 3.
+		if ($frame eq "TRUE" && length($sequence) % 3) {
+			if (length($sequence) % 3 == 1) {
+				$sequence .= "NN";
+			} elsif (length($sequence) % 3 == 2) {
+				$sequence .= "N";
+			}
+		}
+
+		# Assing the parsed alignment information to the hash.
 		$align{$header}=$sequence;
 	}
 }
