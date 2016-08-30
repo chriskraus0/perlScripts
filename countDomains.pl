@@ -56,6 +56,11 @@ foreach my $file (@files) {
 			my $eval = $line[6];
 			if ($line[6] =~ /e/) {
 				$line[6] =~ s/[0-9]+\.[0-9]+e-//;
+			} 
+			# If there is no exponent in this field this field is greater than e.g. E-05 and hence not interesting.
+			# Hence, I give it a "dummy" zero.
+			else {
+				$line[6] = 0;
 			}
 			if ($line[6] >= $cutoff) {
 				if($targetSeqs{$line[0]}) {
