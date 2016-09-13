@@ -235,6 +235,9 @@ sub argumentError {
 			push @res, $self->{COOR}->{$queryCoor};
 		}
 
+		my @ranges = sort {$a <=> $b} keys $self->{COOR};
+		my $endRange = $ranges[$#ranges];
+
 		foreach my $range (sort {$a <=> $b} keys ($self->{COOR})) {
 
 			# Deal with the query start.
@@ -265,15 +268,29 @@ sub argumentError {
 			}
 
 			# Deal with the query end.
-			if ($endCoor > $lastRange && $endCoor < $range) {
+			if ($endCoor - 1> $lastRange && $endCoor - 1< $range) {
+				
+				if ($queryCoor == $lastRange) {
+					pop @res;
+				}	
+				unless ($endCoor == $range) {
+					pop @res;
+					# Determine the substring end position of this array slice.
+					my $pos = $endCoor - $lastRange;
+					push @res, (substr $self->{COOR}->{$lastRange}, 0, $pos);
+				}
+				if ($endCoor < $endRange) {
+					last;
+				}
 
-				pop @res;
+			} elsif ($endCoor - 1> $endRange && $range > $queryCoor && $range == $endRange) {
+				
 				# Determine the substring end position of this array slice.
-				my $pos = $endCoor - $lastRange;
-				push @res, (substr $self->{COOR}->{$lastRange}, 0, $pos);
+				my $pos = $endCoor - $range;
+				push @res, (substr $self->{COOR}->{$range}, 0, $pos);
 				last;
 
-			} elsif ($range == $endCoor) {
+			} elsif ($range == $endCoor - 1 - length $self->{COOR}->{$range}) {
 
 				push @res, $self->{COOR}->{$endCoor};
 				last;
