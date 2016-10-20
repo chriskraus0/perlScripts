@@ -104,7 +104,7 @@ while (<$fh>) {
 
 close $fh;
 
-#$IDType =~ s/\|/\\\|/g;
+$IDType =~ s/\A\w+\|//g;
 
 print $IDType, "\n";
 
