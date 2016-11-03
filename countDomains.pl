@@ -21,10 +21,10 @@ chdir $dir;
 
 ####################
 #USAGE message:
-my $usageMsg = "USAGE: ./countDomains.pl --domtblout=<PATTERN> --output=<FILE> --cutoff=<NUM>\n\n";
+my $usageMsg = "USAGE: ./countDomains.pl --domtblout=<PATTERN> --output=<FILE> --cutoff=<NUM> --evalType=<EVAL|CEVAL|IEVAL>\n\n";
 ####################
 #Catch argument errors.
-die ("\nError: All Arguments are required.\n\n" . "$usageMsg") unless (@ARGV == 3);
+die ("\nError: All Arguments are required.\n\n" . "$usageMsg") unless (@ARGV == 4);
 
 ####################
 #Read all parameters from command line options.
@@ -32,11 +32,20 @@ die ("\nError: All Arguments are required.\n\n" . "$usageMsg") unless (@ARGV == 
 my $domtblout;
 my $output;
 my $cutoff;
+my $evalType;
 
 GetOptions ("domtblout=s" => \$domtblout,
 	"output=s" => \$output,
-	"cutoff=i" => \$cutoff)
+	"cutoff=i" => \$cutoff,
+	"evalType=s" => \$evalType)
 or die("Error in command line arguments.\n" . "$usageMsg");
+
+# Catch user error for evalType.
+unless ( $evalType eq "EVAL" 
+	|| $evalType eq "CEVAL"
+	|| $evalType eq "IEVAL") {
+	die "Error: Option \"--evalType\": \"$evalType\". It must be either \"EVAL\" OR \"CEVAL\" OR \"IEVAL\".\n";
+}
 
 ####################
 # Read domtblout file and remember domain locations.
@@ -47,31 +56,91 @@ my %targetSeqs;
 
 foreach my $file (@files) {
 
+	#Count the line number per file.
+	my $lineNumber = 0;
+
 	open my $fh, "<", $file or die "Error: $file: $!\n";
 
 	while (<$fh>) {
+
+		# Increase lineNumber per read line.
+		$lineNumber ++;
+
 		chomp;
 		unless (/\A#/) {
 			my @line = split /\t/;
-			my $eval = $line[6];
-			if ($line[6] =~ /e/) {
-				$line[6] =~ s/[0-9]+\.[0-9]+e-//;
-			} 
-			# If there is no exponent in this field this field is greater than e.g. E-05 and hence not interesting.
-			# Hence, I give it a "dummy" zero.
-			else {
-				$line[6] = 0;
+			
+			# Throw "not tsv formatted line" warning. 
+			if (@line < 28) {
+				warn "Warning: File \"$file\" is not properly formated as a 28 column tsv in line \"$lineNumber\"!\n";
 			}
-			if ($line[6] >= $cutoff) {
-				if($targetSeqs{$line[0]}) {
-					push @{ $targetSeqs{$line[0]} }, [ ($line[3], $line[4], $eval, $line[6], $line[19], $line[20]) ];
-				} else {
-					$targetSeqs{$line[0]} = [ [ ($line[3], $line[4], $eval, $line[6], $line[19], $line[20]) ] ];
+	
+			# Decide which type of evalue is used here.
+			# Use c-Evalue.
+			if ($evalType eq "CEVAL") {
+				my $eval = $line[11];
+				if ($line[11] =~ /e/) {
+					$line[11] =~ s/[0-9]+\.[0-9]+e-//;
+				} 
+				# If there is no exponent in this field this field is greater than e.g. E-05 and hence not interesting.
+				# Hence, I give it a "dummy" zero.
+				else {
+					$line[11] = 0;
+				}
+				if ($line[11] >= $cutoff) {
+					if($targetSeqs{$line[0]}) {
+						push @{ $targetSeqs{$line[0]} }, [ ($line[3], $line[4], $eval, $line[11], $line[19], $line[20]) ];
+					} else {
+						$targetSeqs{$line[0]} = [ [ ($line[3], $line[4], $eval, $line[11], $line[19], $line[20]) ] ];
+					}
+				}
+			}
+
+			# Use e-value.
+			if ($evalType eq "EVAL") {
+				my $eval = $line[6];
+				if ($line[6] =~ /e/) {
+					$line[6] =~ s/[0-9]+\.[0-9]+e-//;
+				} 
+				# If there is no exponent in this field this field is greater than e.g. E-05 and hence not interesting.
+				# Hence, I give it a "dummy" zero.
+				else {
+					$line[6] = 0;
+				}
+				if ($line[6] >= $cutoff) {
+					if($targetSeqs{$line[0]}) {
+						push @{ $targetSeqs{$line[0]} }, [ ($line[3], $line[4], $eval, $line[6], $line[19], $line[20]) ];
+					} else {
+						$targetSeqs{$line[0]} = [ [ ($line[3], $line[4], $eval, $line[6], $line[19], $line[20]) ] ];
+					}
+				}
+			}
+
+			# Use i-Evalue.
+			if ($evalType eq "IEVAL") {
+				my $eval = $line[12];
+				if ($line[12] =~ /e/) {
+					$line[12] =~ s/[0-9]+\.[0-9]+e-//;
+				} 
+				# If there is no exponent in this field this field is greater than e.g. E-05 and hence not interesting.
+				# Hence, I give it a "dummy" zero.
+				else {
+					$line[12] = 0;
+				}
+				if ($line[12] >= $cutoff) {
+					if($targetSeqs{$line[0]}) {
+						push @{ $targetSeqs{$line[0]} }, [ ($line[3], $line[4], $eval, $line[12], $line[19], $line[20]) ];
+					} else {
+						$targetSeqs{$line[0]} = [ [ ($line[3], $line[4], $eval, $line[12], $line[19], $line[20]) ] ];
+					}
 				}
 			}
 		}
 	}
 	close $fh;
+	
+	#Re-set line number.
+	$lineNumber = 0;
 }
 
 ####################
