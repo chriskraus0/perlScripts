@@ -21,7 +21,7 @@ chdir $dir;
 
 ####################
 #USAGE message:
-my $usageMsg = "USAGE: ./sortingRADseqs.pl --midResPattern=<PATTERN> --fwdFastq=<FILE> --revFastq=<FILE> --outputFWD=<FILE> --outputREV=<FILE>\n\n";
+my $usageMsg = "USAGE: ./sortingRADseqs.pl --midResPattern=<PATTERN> --fwdFastq=<FILE> --revFastq=<FILE> --outputFWD=<FILE> --outputREV=<FILE> --outputFWD=<FILE> --outputREV=<FILE>\n\n";
 ####################
 #Catch argument errors.
 die ("\nError: All Arguments are required.\n\n" . "$usageMsg") unless (@ARGV == 5);
@@ -61,7 +61,7 @@ my $mid = "";
 
 while (<$fh>) {
 	chomp;
-	if (/\A@/) {
+	if (/\A@/ && !$qualHit) {
 		$header = $_;
 		($seqID, my $dummy) = split / /, $header;
 		$hit = 0;
@@ -69,7 +69,9 @@ while (<$fh>) {
 		$qualString = "";
 	} elsif (/\A$midResPattern/) {
 		my $rawSeq = $_;
-		my $len = length $midResPattern;
+		my $modPattern = $midResPattern;
+		$modPattern =~ s/\A\[.+\]/\./g;
+		my $len = length $modPattern;
 		$mid = substr $rawSeq, 0, $len;
 		$seq = substr $rawSeq, $len;
 		$hit = 1;
@@ -85,6 +87,8 @@ while (<$fh>) {
 		$header = "$header" . " " . "$mid";
 		$targets{$seqID} = [ ($header, $seq, $qualString) ];
 		$qualString = "";
+		$mid = "";
+		$seq = "";
 	}
 }
 
@@ -101,7 +105,7 @@ my $revID = "";
 
 while (<$fh>) {
 	chomp;
-	if (/\A@/) {
+	if (/\A@/ && !$qualHit) {
 		$hit = 0;
 		$qualHit  = 0;
 		$header = $_;
@@ -116,6 +120,7 @@ while (<$fh>) {
 		$qualHit = 1;
 	} elsif ($hit && $qualHit) {
 		push @{ $targets{$revID} }, $_;
+		$qualHit = 0;
 	}
 
 }
@@ -137,6 +142,11 @@ foreach my $id (keys %targets) {
 	print $fhREV "$targets{$id}->[4]\n";
 	print $fhREV "+\n";
 	print $fhREV "$targets{$id}->[5]\n";
+	
+	# STDERR output.
+	#print STDERR "GENE\n" . "$targets{$id}->[3]\n";
+	#print STDERR "SEQ\n" . "$targets{$id}->[4]\n";
+	#print STDERR "QUAL\n" . "$targets{$id}->[5]\n";
 }
 
 close $fhFWD;

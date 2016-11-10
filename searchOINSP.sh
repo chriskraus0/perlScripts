@@ -7,5 +7,5 @@ TransGene=$(/home/christopher/programmes/perlScripts/transformHeaders.pl --heade
 
 java -jar OrthoInspector_comline_client.jar -mode single -organism_list all -query $TransGene -outfmt 3 -out $Gene.Oinsp.tsv 2>$Gene.Oinsp.err
 
-/home/christopher/programmes/perlScripts/oinspOut3ToCounts.pl --oinsp3Tsv=$Gene.Oinsp.tsv --outputTsv=$Gene.Oinsp.counts.tsv --geneName=$Gene
+/home/christopher/programmes/perlScripts/oinspOut3ToCounts.pl --oinsp3Tsv=$Gene.Oinsp.tsv --outputTsv=$Gene.Oinsp.counts.tsv --geneName=$Gene --headerIndex=omclGeneHeadersIndex.tsv
 done < $FILE
