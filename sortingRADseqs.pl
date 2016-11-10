@@ -21,7 +21,7 @@ chdir $dir;
 
 ####################
 #USAGE message:
-my $usageMsg = "USAGE: ./sortingRADseqs.pl --midResPattern=<PATTERN> --fwdFastq=<FILE> --revFastq=<FILE> --outputFWD=<FILE> --outputREV=<FILE> --outputFWD=<FILE> --outputREV=<FILE>\n\n";
+my $usageMsg = "USAGE: ./sortingRADseqs.pl --midResPattern=<PATTERN> --fwdFastq=<FILE> --revFastq=<FILE> --outputFWD=<FILE> --outputREV=<FILE>\n\n";
 ####################
 #Catch argument errors.
 die ("\nError: All Arguments are required.\n\n" . "$usageMsg") unless (@ARGV == 5);
