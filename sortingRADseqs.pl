@@ -21,7 +21,7 @@ chdir $dir;
 
 ####################
 #USAGE message:
-my $usageMsg = "USAGE: ./sortingRADseqs.pl --midResPattern=<PATTERN> --fwdFastq=<FILE> --revFastq=<FILE> --outputFWD=<FILE> --outputREV=<FILE> --outputFWD=<FILE> --outputREV=<FILE>\n\n";
+my $usageMsg = "USAGE: ./sortingRADseqs.pl --midResPattern=<PATTERN> --fwdFastq=<FILE> --revFastq=<FILE> --outputFWD=<FILE> --outputREV=<FILE> \n\n";
 ####################
 #Catch argument errors.
 die ("\nError: All Arguments are required.\n\n" . "$usageMsg") unless (@ARGV == 5);
@@ -58,6 +58,9 @@ my $qualString = "";
 my $seqID = "";
 my $seq = "";
 my $mid = "";
+my $modPattern = $midResPattern;
+$modPattern =~ s/\A\[.+\]/\./g;
+my $len = length $modPattern;
 
 while (<$fh>) {
 	chomp;
@@ -69,9 +72,6 @@ while (<$fh>) {
 		$qualString = "";
 	} elsif (/\A$midResPattern/) {
 		my $rawSeq = $_;
-		my $modPattern = $midResPattern;
-		$modPattern =~ s/\A\[.+\]/\./g;
-		my $len = length $modPattern;
 		$mid = substr $rawSeq, 0, $len;
 		$seq = substr $rawSeq, $len;
 		$hit = 1;
@@ -79,6 +79,8 @@ while (<$fh>) {
 		$qualHit = 1;
 	} elsif ($hit && $qualHit) {
 		$qualString = $_;
+		my $cutString = substr $qualString, $len;
+		$qualString = $cutString;
 		$qualHit = 0;
 	}
 	if ($hit && $qualString) {
