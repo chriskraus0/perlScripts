@@ -55,7 +55,7 @@ if (@ARGV == 1 && $ARGV[0] eq "--help") {
 	exit 0;
 }
 
-warn ("\nWarning: All Arguments are required.\n\n") unless (@ARGV == 1);
+warn ("\nWarning: All command line arguments are required.\n\n") unless (@ARGV == 1);
 
 
 ####################
@@ -146,6 +146,39 @@ close $fh;
 ####################
 # List all vs all 
 
+# Write output to file specified in $output.
+
+open my $ofh, ">", $outputFile;
+
+# Sort all interaction entries alpha-numerical.
+my @entries = sort keys %results;
+
+# Print header line.
+for my $entry (@entries) {
+	print $ofh "$entry;";
+}
+
+# Put an end to the line.
+print $ofh "\n";
+
+# Fill matrix line by line.
+for my $entry1 (@entries) {
+	# Print header of the row.
+	print $ofh "$entry1;";
+	for my $entry2 (@entries) {
+		if ($results{$entry1}->{$entry2}) {
+			print $ofh "1";
+		} else {
+			print $ofh "0";
+		}
+		print $ofh ";";
+	}
+	# Put an end to the row.
+	print $ofh "\n";
+}
+
+# Close file handle.
+close $ofh;
 
 ########################################
 # Subroutines:
