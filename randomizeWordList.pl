@@ -103,11 +103,10 @@ if ($max >= $listLen) {
 	warn "Warning: option \"--maxWords\" is greater or equal to the size of the word list.\n"
 		. "Word List: $listLen words\n"
 		. "\"--maxWords\": $max\n\n";
-	$max = $listLen;
 }
 	
 # Iterate over all remaining entries and select new words.
-for (my $i = 0; $i < $max - 1; $i++) { 
+for (my $i = 0; $i < $max; $i++) { 
 	my $randNum = int(rand($listLen));
 	print $list[$randNum],"\n";
 }
